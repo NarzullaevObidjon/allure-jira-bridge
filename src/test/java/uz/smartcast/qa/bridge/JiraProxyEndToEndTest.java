@@ -13,7 +13,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +29,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class JiraProxyEndToEndTest {
 
-    record Call(String method, String uri, String auth, String contentLength, String body) {
+    record Call(String method, String uri, String auth, String contentLength, String body, Set<String> headers) {
     }
 
     static final byte[] GZIPPED = {0x1f, (byte) 0x8b, 8, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3};
@@ -77,6 +80,23 @@ class JiraProxyEndToEndTest {
         send("POST", "/rest/api/2/issue", body);
 
         assertThat(calls.get(0).body()).isEqualTo(body);
+    }
+
+    @Test
+    void cookiesAndClientAddressHeadersAreNotForwarded() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(bridge("/" + SECRET + "/rest/api/2/myself"))
+                .header("Authorization", "Bearer allure-integration-token")
+                .header("Cookie", "JSESSIONID=abc")
+                .header("Forwarded", "for=203.0.113.7")
+                .header("X-Forwarded-For", "203.0.113.7")
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Real-IP", "203.0.113.7")
+                .header("X-Custom", "kept")
+                .build();
+        client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(calls.get(0).headers()).contains("authorization", "x-custom")
+                .doesNotContain("cookie", "forwarded", "x-forwarded-for", "x-forwarded-proto", "x-real-ip");
     }
 
     @Test
@@ -211,7 +231,8 @@ class JiraProxyEndToEndTest {
         calls.add(new Call(ex.getRequestMethod(), ex.getRequestURI().getRawPath()
                 + (ex.getRequestURI().getRawQuery() == null ? "" : "?" + ex.getRequestURI().getRawQuery()),
                 ex.getRequestHeaders().getFirst("Authorization"), ex.getRequestHeaders().getFirst("Content-Length"),
-                body));
+                body, ex.getRequestHeaders().keySet().stream().map(h -> h.toLowerCase(Locale.ROOT))
+                        .collect(Collectors.toSet())));
         String path = ex.getRequestURI().getPath();
         int status;
         String response;

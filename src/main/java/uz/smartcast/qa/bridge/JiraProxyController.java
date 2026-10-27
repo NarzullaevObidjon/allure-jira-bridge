@@ -53,10 +53,14 @@ public class JiraProxyController {
     /** Per-connection headers, never forwarded in either direction. */
     private static final Set<String> HOP_BY_HOP = Set.of("connection", "keep-alive", "proxy-authenticate",
             "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade");
-    /** Hop-by-hop plus the ones the JDK client sets itself. */
+    /**
+     * Hop-by-hop plus the ones the JDK client sets itself, and what Allure has no use for: cookies (it authenticates
+     * with a token) and the ingress's client-address headers, which would end up in Jira's audit log as if trusted.
+     * Every x-forwarded-* header is dropped as well.
+     */
     private static final Set<String> REQUEST_NOT_FORWARDED = Set.of("connection", "keep-alive",
             "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade", "host",
-            "content-length", "expect");
+            "content-length", "expect", "cookie", "forwarded", "x-real-ip");
 
     private final HttpClient http;
     private final IssueFieldInjector injector;
@@ -177,7 +181,8 @@ public class JiraProxyController {
                 .timeout(TIMEOUT)
                 .method(request.getMethod(), body);
         for (String name : Collections.list(request.getHeaderNames())) {
-            if (!REQUEST_NOT_FORWARDED.contains(name.toLowerCase(Locale.ROOT))) {
+            String lower = name.toLowerCase(Locale.ROOT);
+            if (!REQUEST_NOT_FORWARDED.contains(lower) && !lower.startsWith("x-forwarded-")) {
                 for (String value : Collections.list(request.getHeaders(name))) {
                     upstream.header(name, value);
                 }
