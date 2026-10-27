@@ -1,0 +1,6 @@
+target/
+*.txt
+*.textClipping
+.DS_Store
+.idea/
+.env

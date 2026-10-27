@@ -1,0 +1,9 @@
+target/
+data/
+*.log
+.idea/
+keyJira.txt
+*.key
+.env
+*.textClipping
+.DS_Store
