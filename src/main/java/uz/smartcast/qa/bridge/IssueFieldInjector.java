@@ -1,13 +1,13 @@
 package uz.smartcast.qa.bridge;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Adds the fields Allure cannot send (array-typed Developer and Labels) to a Jira "create issue" body. Values the
@@ -32,7 +32,7 @@ public class IssueFieldInjector {
         JsonNode root;
         try {
             root = json.readTree(body);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             return new Result(body, null, List.of()); // not JSON: let Jira answer it
         }
         if (root == null || !(root.get("fields") instanceof ObjectNode fields)) {
@@ -57,18 +57,14 @@ public class IssueFieldInjector {
         if (added.isEmpty()) {
             return new Result(body, project, added);
         }
-        try {
-            return new Result(json.writeValueAsBytes(root), project, added);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        return new Result(json.writeValueAsBytes(root), project, added);
     }
 
     /** Allure may send the project as {"key": "QDH"} or {"id": "11000"}; both are accepted in the config. */
     private boolean inScope(ObjectNode fields) {
         JsonNode project = fields.path("project");
-        return props.projects().contains(project.path("key").asText(""))
-                || props.projects().contains(project.path("id").asText(""));
+        return props.projects().contains(project.path("key").asString(""))
+                || props.projects().contains(project.path("id").asString(""));
     }
 
     private static String projectOf(ObjectNode fields) {
@@ -76,11 +72,11 @@ public class IssueFieldInjector {
         if (project == null || !project.isObject()) {
             return null;
         }
-        return project.hasNonNull("key") ? project.get("key").asText() : project.path("id").asText(null);
+        return project.hasNonNull("key") ? project.get("key").asString() : project.path("id").asString(null);
     }
 
     private static boolean isEmpty(JsonNode node) {
         return node == null || node.isNull() || (node.isArray() && node.isEmpty())
-                || (node.isTextual() && node.asText().isBlank());
+                || (node.isString() && node.asString().isBlank());
     }
 }

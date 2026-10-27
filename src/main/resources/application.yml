@@ -2,8 +2,13 @@ server:
   port: ${PORT:8080}
   tomcat:
     # JQL in query strings may contain these unencoded; Tomcat rejects them by default.
-    relaxed-query-chars: '<,>,[,\,],^,`,{,|,}'
-    relaxed-path-chars: '<,>,[,\,],^,`,{,|,}'
+    relaxed-query-chars: '",<,>,[,\,],^,`,{,|,}'
+    relaxed-path-chars: '",<,>,[,\,],^,`,{,|,}'
+
+logging:
+  level:
+    # Tomcat logs the full request target (with PATH_SECRET) when it rejects a malformed request.
+    org.apache.coyote.http11.Http11Processor: WARN
 
 spring:
   application:

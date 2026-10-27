@@ -2,13 +2,13 @@ package uz.smartcast.qa.bridge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.util.unit.DataSize;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class IssueFieldInjectorTest {
 
@@ -28,7 +28,7 @@ class IssueFieldInjectorTest {
 
         assertThat(f.get("customfield_10200").toString()).isEqualTo("[{\"name\":\"i.fedulaev\"}]");
         assertThat(f.get("labels").toString()).isEqualTo("[\"QA\"]");
-        assertThat(f.get("summary").asText()).isEqualTo("S");
+        assertThat(f.get("summary").asString()).isEqualTo("S");
     }
 
     @Test

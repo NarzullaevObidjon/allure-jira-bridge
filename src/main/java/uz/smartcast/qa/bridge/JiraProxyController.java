@@ -1,7 +1,5 @@
 package uz.smartcast.qa.bridge;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -32,6 +30,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Stands in for Jira in the Allure integration. REST calls go to the real Jira as they are (Allure's own credentials
@@ -124,7 +124,7 @@ public class JiraProxyController {
                 : request.getInputStream().readNBytes(maxCreateIssueBody + 1);
         if (body == null || body.length > maxCreateIssueBody) {
             log.warn("Create issue refused: body is over {} bytes", maxCreateIssueBody);
-            writeError(response, HttpStatus.PAYLOAD_TOO_LARGE, "Create issue request is over " + maxCreateIssueBody
+            writeError(response, HttpStatus.CONTENT_TOO_LARGE, "Create issue request is over " + maxCreateIssueBody
                     + " bytes (allure-jira-bridge limit, see MAX_CREATE_ISSUE_BODY)");
             return;
         }
