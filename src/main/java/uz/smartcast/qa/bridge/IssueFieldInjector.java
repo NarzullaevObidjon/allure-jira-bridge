@@ -10,8 +10,9 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * Adds the fields Allure cannot send (array-typed Developer and Labels) to a Jira "create issue" body. Values the
- * request already has are never replaced.
+ * Adds the fields Allure cannot send (array-typed Developer and Labels) to a Jira "create issue" body, whatever the
+ * project. Developer is the issue's assignee, or the configured default when the issue has none. Values the request already has are never replaced. A project whose create screen lacks the Developer field
+ * gets Jira's "not on the appropriate screen" error, which Allure shows in the defect form.
  */
 @Component
 public class IssueFieldInjector {
@@ -39,15 +40,14 @@ public class IssueFieldInjector {
             return new Result(body, null, List.of());
         }
         String project = projectOf(fields);
-        if (project == null || !inScope(fields)) {
-            return new Result(body, project, List.of());
-        }
 
         List<String> added = new ArrayList<>();
         if (isEmpty(fields.get(props.developerFieldId()))) {
+            String assignee = assigneeOf(fields);
+            String developer = assignee != null ? assignee : props.developerUsername();
             ArrayNode developers = fields.putArray(props.developerFieldId());
-            developers.addObject().put("name", props.developerUsername());
-            added.add(props.developerFieldId() + "=" + props.developerUsername());
+            developers.addObject().put("name", developer);
+            added.add(props.developerFieldId() + "=" + developer + (assignee != null ? " (assignee)" : " (default)"));
         }
         if (isEmpty(fields.get("labels"))) {
             ArrayNode labels = fields.putArray("labels");
@@ -60,13 +60,16 @@ public class IssueFieldInjector {
         return new Result(json.writeValueAsBytes(root), project, added);
     }
 
-    /** Allure may send the project as {"key": "QDH"} or {"id": "11000"}; both are accepted in the config. */
-    private boolean inScope(ObjectNode fields) {
-        JsonNode project = fields.path("project");
-        return props.projects().contains(project.path("key").asString(""))
-                || props.projects().contains(project.path("id").asString(""));
+    /**
+     * Login from {"assignee": {"name": "..."}}, or null when there is none to copy. "-1" is Jira's "Automatic", which
+     * names no user.
+     */
+    private static String assigneeOf(ObjectNode fields) {
+        String name = fields.path("assignee").path("name").asString("").trim();
+        return name.isEmpty() || name.equals("-1") ? null : name;
     }
 
+    /** For the log only: Allure may send the project as {"key": "QDH"} or {"id": "11000"}. */
     private static String projectOf(ObjectNode fields) {
         JsonNode project = fields.get("project");
         if (project == null || !project.isObject()) {

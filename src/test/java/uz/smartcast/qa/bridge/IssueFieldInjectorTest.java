@@ -14,8 +14,7 @@ class IssueFieldInjectorTest {
 
     private final ObjectMapper json = new ObjectMapper();
     private final IssueFieldInjector injector = new IssueFieldInjector(json, new BridgeProperties(
-            URI.create("https://jira"), "s".repeat(32), "customfield_10200", "i.fedulaev", Set.of("QA"), Set.of("QDH", "11000"),
-            DataSize.ofMegabytes(1)));
+            URI.create("https://jira"), "s".repeat(32), "customfield_10200", "i.fedulaev", Set.of("QA"), DataSize.ofMegabytes(1)));
 
     private JsonNode fields(String body) throws Exception {
         var result = injector.inject(body.getBytes(StandardCharsets.UTF_8));
@@ -32,8 +31,38 @@ class IssueFieldInjectorTest {
     }
 
     @Test
-    void matchesProjectById() throws Exception {
-        assertThat(fields("{\"fields\":{\"project\":{\"id\":\"11000\"}}}").has("labels")).isTrue();
+    void developerIsTheAssignee() throws Exception {
+        JsonNode f = fields("{\"fields\":{\"project\":{\"key\":\"QDH\"},\"assignee\":{\"name\":\"o.narzullaev\"}}}");
+
+        assertThat(f.get("customfield_10200").toString()).isEqualTo("[{\"name\":\"o.narzullaev\"}]");
+        assertThat(f.get("assignee").toString()).isEqualTo("{\"name\":\"o.narzullaev\"}");
+    }
+
+    @Test
+    void developerFallsBackToDefaultWithoutARealAssignee() throws Exception {
+        for (String assignee : new String[] {"{\"name\":\"-1\"}", "{\"name\":\" \"}", "{}", "null"}) {
+            JsonNode f = fields("{\"fields\":{\"project\":{\"key\":\"QDH\"},\"assignee\":" + assignee + "}}");
+
+            assertThat(f.get("customfield_10200").toString()).as(assignee).isEqualTo("[{\"name\":\"i.fedulaev\"}]");
+        }
+    }
+
+    @Test
+    void developerTheRequestHasWinsOverAssignee() throws Exception {
+        JsonNode f = fields("{\"fields\":{\"project\":{\"key\":\"QDH\"},\"assignee\":{\"name\":\"o.narzullaev\"},"
+                + "\"customfield_10200\":[{\"name\":\"other.dev\"}]}}");
+
+        assertThat(f.get("customfield_10200").toString()).isEqualTo("[{\"name\":\"other.dev\"}]");
+    }
+
+    @Test
+    void addsFieldsWhateverTheProject() throws Exception {
+        for (String project : new String[] {"{\"key\":\"SMAC\"}", "{\"id\":\"11000\"}"}) {
+            JsonNode f = fields("{\"fields\":{\"project\":" + project + "}}");
+
+            assertThat(f.has("labels")).as(project).isTrue();
+            assertThat(f.has("customfield_10200")).as(project).isTrue();
+        }
     }
 
     @Test
@@ -55,8 +84,8 @@ class IssueFieldInjectorTest {
     }
 
     @Test
-    void leavesOtherProjectsAndNonJsonUntouched() {
-        for (String body : new String[] {"{\"fields\":{\"project\":{\"key\":\"SMAC\"}}}", "not json", "{}", "[]"}) {
+    void leavesNonJsonAndBodiesWithoutFieldsUntouched() {
+        for (String body : new String[] {"not json", "{}", "[]", "{\"fields\":[]}"}) {
             var result = injector.inject(body.getBytes(StandardCharsets.UTF_8));
             assertThat(result.added()).isEmpty();
             assertThat(new String(result.body(), StandardCharsets.UTF_8)).isEqualTo(body);

@@ -10,15 +10,19 @@ QA выбирают проект и тип задачи в форме дефек
 ```
 Allure (форма дефекта: проект, тип) ──► allure-jira-bridge ──► jira.asgardia.uz
                                          │
-                                         ├─ POST /rest/api/2/issue: если нет Developer → [{"name":"i.fedulaev"}],
+                                         ├─ POST /rest/api/2/issue: если нет Developer → [{"name":"<assignee>"}],
+                                         │                          без assignee        → [{"name":"i.fedulaev"}],
                                          │                          если нет Labels    → ["QA"]
                                          ├─ остальные /rest/** → в Jira без изменений (токен Allure проходит насквозь)
                                          └─ /browse/QDH-1 и т.п. → 302 на настоящую Jira
 ```
 
 - Значения, которые в запросе уже есть, не заменяются.
-- Поля добавляются только для проектов из `JIRA_PROJECTS` (по умолчанию QDH и FDH). В остальных
-  проектах поля Developer может не быть на экране, и Jira отклонила бы задачу.
+- Developer = исполнитель (Assignee) задачи. Если исполнителя нет или выбран «Automatic», ставится
+  `JIRA_DEVELOPER_USERNAME` (i.fedulaev).
+- Поля добавляются в любом проекте, который выбрали в Allure: список проектов не проверяется. Если в проекте
+  поля Developer нет на экране создания, Jira откажет («Field 'customfield_10200' cannot be set...»), задача
+  не создастся, и QA увидят эту ошибку в форме дефекта.
 - Если QA уберут блок Issue в форме дефекта, задача не создаётся: запроса в Jira просто нет.
 - Ошибки Jira возвращаются в Allure как есть, QA видят их прямо в форме.
 - У сервиса нет своего токена Jira, базы данных и состояния.
@@ -48,9 +52,8 @@ java -jar target/allure-jira-bridge-0.1.0.jar
 | `JIRA_URL` | `https://jira.asgardia.uz` | настоящая Jira |
 | `PATH_SECRET` | **обязательна** | секрет в пути: Allure ходит на `https://<сервис>/<PATH_SECRET>/rest/...`, без него 404. Не меньше 32 символов `[A-Za-z0-9_-]`, например `openssl rand -hex 32` |
 | `JIRA_DEVELOPER_FIELD` | `customfield_10200` | поле Developer (multi user picker) |
-| `JIRA_DEVELOPER_USERNAME` | `i.fedulaev` | логин IgorFedulaev |
+| `JIRA_DEVELOPER_USERNAME` | `i.fedulaev` | логин для Developer, если у задачи нет исполнителя (IgorFedulaev) |
 | `JIRA_LABELS` | `QA` | через запятую |
-| `JIRA_PROJECTS` | `QDH,11000,FDH,10704` | ключи и id проектов, где дописывать поля |
 | `MAX_CREATE_ISSUE_BODY` | `1MB` | предел тела «создать задачу» (оно читается в память), больше → 413. Остальные запросы, включая вложения, идут потоком |
 
 Проверка: `GET /actuator/health` → `{"status":"UP"}`.
@@ -81,8 +84,9 @@ java -jar target/allure-jira-bridge-0.1.0.jar
 
 ## Ограничения и риски
 
-- Developer один для всех проектов (`i.fedulaev`). Если в FDH нужен другой разработчик,
-  понадобится таблица «проект → разработчик».
+- Задачи из Allure можно создавать только в проектах, где поле Developer есть на экране создания
+  (сейчас QDH и FDH). В других проектах Jira откажет.
+- Developer берётся из исполнителя. Если исполнителя нет, Developer один для всех проектов (`i.fedulaev`).
 - Токен Jira в Allure сейчас выписан на `i.fedulaev`, у которого права администратора Jira.
   Задачи создаются от его имени.
 - Сервис ловит только `POST /rest/api/2/issue` и `/rest/api/latest/issue`. Если Allure создаёт задачи

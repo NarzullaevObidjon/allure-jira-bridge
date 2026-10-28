@@ -29,10 +29,9 @@ bridge:
   # Required, no default: the service does not start without it. Allure URL = https://<bridge>/<PATH_SECRET>
   path-secret: ${PATH_SECRET:}
   developer-field-id: ${JIRA_DEVELOPER_FIELD:customfield_10200}
-  # Jira login of IgorFedulaev; customfield_10200 is a multi user picker -> [{"name": "i.fedulaev"}]
+  # Developer = the issue's assignee; this Jira login (IgorFedulaev) only when there is none.
+  # customfield_10200 is a multi user picker -> [{"name": "<login>"}]
   developer-username: ${JIRA_DEVELOPER_USERNAME:i.fedulaev}
   labels: ${JIRA_LABELS:QA}
-  # Keys and ids of projects that require Developer: QA Development Hub (QDH/11000), Framework Development Hub (FDH/10704)
-  projects: ${JIRA_PROJECTS:QDH,11000,FDH,10704}
   # Only "create issue" is buffered in memory; everything else (attachments included) is streamed.
   max-create-issue-body: ${MAX_CREATE_ISSUE_BODY:1MB}

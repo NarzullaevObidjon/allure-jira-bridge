@@ -34,9 +34,8 @@ Without Docker: `mvn package && java -jar target/allure-jira-bridge-0.1.0.jar`.
 | `PATH_SECRET` | **required**, no default; the app does not start without it. At least 32 chars of `[A-Za-z0-9_-]`: `openssl rand -hex 32` |
 | `JIRA_URL` | `https://jira.asgardia.uz` |
 | `JIRA_DEVELOPER_FIELD` | `customfield_10200` |
-| `JIRA_DEVELOPER_USERNAME` | `i.fedulaev` |
+| `JIRA_DEVELOPER_USERNAME` | `i.fedulaev` (used when the issue has no assignee; otherwise Developer = assignee) |
 | `JIRA_LABELS` | `QA` |
-| `JIRA_PROJECTS` | `QDH,11000,FDH,10704` |
 | `MAX_CREATE_ISSUE_BODY` | `1MB` (larger "create issue" bodies get 413; other requests are streamed, not limited) |
 
 ## Security requirements

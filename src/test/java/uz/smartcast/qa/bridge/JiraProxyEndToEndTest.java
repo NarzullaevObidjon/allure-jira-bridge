@@ -75,8 +75,9 @@ class JiraProxyEndToEndTest {
     }
 
     @Test
-    void otherProjectsAreForwardedUnchanged() throws Exception {
-        String body = "{\"fields\":{\"project\":{\"key\":\"SMAC\"},\"summary\":\"x\"}}";
+    void createIssueThatHasBothFieldsIsForwardedUnchanged() throws Exception {
+        String body = "{\"fields\":{\"project\":{\"key\":\"SMAC\"},\"summary\":\"x\",\"labels\":[\"UI\"],"
+                + "\"customfield_10200\":[{\"name\":\"other.dev\"}]}}";
         send("POST", "/rest/api/2/issue", body);
 
         assertThat(calls.get(0).body()).isEqualTo(body);

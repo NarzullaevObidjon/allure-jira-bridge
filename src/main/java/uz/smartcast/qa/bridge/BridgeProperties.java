@@ -23,15 +23,10 @@ public record BridgeProperties(
         @NotNull @Pattern(regexp = "[A-Za-z0-9_-]{32,}", message = "must be at least 32 characters of [A-Za-z0-9_-]"
                 + " (e.g. openssl rand -hex 32)") String pathSecret,
         @NotBlank String developerFieldId,
-        /** Jira login put into the Developer field when the request has none. */
+        /** Jira login put into the Developer field when the request has neither a Developer nor an assignee. */
         @NotBlank String developerUsername,
         /** Labels put on the issue when the request has none. */
         @NotEmpty Set<String> labels,
-        /**
-         * Projects (key or numeric id) whose create screen has the Developer field. Other projects are forwarded
-         * untouched: Jira rejects a field that is not on the project's screen.
-         */
-        @NotEmpty Set<String> projects,
         /** "Create issue" bodies are read into memory to add fields; larger ones are refused with 413. */
         @DefaultValue("1MB") DataSize maxCreateIssueBody) {
 }
